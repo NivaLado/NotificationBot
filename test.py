@@ -1,21 +1,27 @@
-import sqlite3
+import spacy
+from spacy.lang.ru.examples import sentences
+import enchant 
+import pymorphy2
 
-try:
-    conn = sqlite3.connect("C:\\NotificationBot\\NotificationBot.db")
-    cursor = conn.cursor()
+# init
+morph = pymorphy2.MorphAnalyzer()
+x = morph.parse('машины')[0]
+print(x.normal_form)
 
-    # Create user
-    cursor.execute("INSERT OR IGNORE INTO 'users' ('userId') VALUES (?)", (1001,))
+thisdict = {
+  "завтра": 1,
+  "вчера": -1,
+  "неделю": 1964
+}
 
-    # Read all users
-    users = cursor.execute("SELECT * FROM 'users'")
-    print(users.fetchall())
 
-    conn.commit()
+dictionary = enchant.Dict("ru_RU")
+print(dictionary.check("Приaффвет"))
+print(dictionary.suggest("Приaвет"))
 
-except sqlite3.Error as error:
-    print("Error", error)
+nlp = spacy.load("ru_core_news_md")
+doc = nlp("Через недели")
 
-finally:
-    if (conn):
-        conn.close()
+print(doc.text)
+for token in doc:
+    print(token.text, token.pos_, token.dep_)

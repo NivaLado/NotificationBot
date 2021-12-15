@@ -1,0 +1,17 @@
+pip install aiogram
+pip install timezonefinder
+pip install geopy
+pip install -U spacy
+pip install pyenchant
+
+pip install pymorphy2
+pip install -U pymorphy2-dicts-ru
+
+
+1) Отображение всех напоминаний
+2) Удаление напоминания
+3) Установка часового пояся и напоминаия о нём если он не установленн
+    При выборе часового пояса есть вариант выбрать с помощью геолокации либо ручной ввод
+4) Добавить интерактивные кнопки
+5) Написать парсер текста
+
