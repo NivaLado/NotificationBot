@@ -3,6 +3,7 @@ pip install timezonefinder
 pip install geopy
 pip install -U spacy
 pip install pyenchant
+pip install geocoder
 
 pip install pymorphy2
 pip install -U pymorphy2-dicts-ru
