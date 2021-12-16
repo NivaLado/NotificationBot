@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: bot.py (Integrated Terminal)",
+            "name": "Python: spacyNLP.py (Integrated Terminal)",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/bot.py",
+            "program": "${workspaceFolder}/services/spacyNLP.py",
             "console": "integratedTerminal"
         }
     ]
