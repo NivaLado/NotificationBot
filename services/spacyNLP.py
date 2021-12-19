@@ -55,9 +55,9 @@ class SpacyNLP:
         if count == 2:
             print("Year: " + splittedString[2])
 
-spacyService = SpacyNLP()
-result = spacyService.getDateAndTimeFromString("1/1/2021")
-print(result)
+#spacyService = SpacyNLP()
+#result = spacyService.getDateAndTimeFromString("1/1/2021")
+#print(result)
 
 #Завтра к +23:00 поставить будильник в школу
 

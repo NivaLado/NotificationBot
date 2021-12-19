@@ -14,11 +14,12 @@ from bot import Repository
 from timezonefinder import TimezoneFinder
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from states.locationQuestionState import LocatioQuestionState
+from states.notificationBotStates import NotificationBotStates
 from services.spacyNLP import SpacyNLP
 
 obj = TimezoneFinder(in_memory=True)
 geolocator = Nominatim(user_agent = "geoapiExercises")
-spacyService = SpacyNLP()
+# spacyService = SpacyNLP()
 keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -62,14 +63,18 @@ async def location (message: Message, state:FSMContext):
         await state.finish()
         await message.answer(result, reply_markup=ReplyKeyboardRemove())
 
+# location button handler
+@dp.message_handler(Text(equals=["❌ Отмена"]), state=LocatioQuestionState.SendCountry)
+async def processButton(message: Message, state:FSMContext):
+    await state.finish()
+    await message.answer("❌ Отменено", reply_markup=ReplyKeyboardRemove())
+
 # If user has state and want to enter country or time
 @dp.message_handler(content_types=['text'], state=LocatioQuestionState.SendCountry)
 async def setTimezoneFromCountry(message: Message, state: FSMContext):
-    time = spacyService.getTimeFromString(message.text)
-
-    if time:
-
+    #time = spacyService.getTimeFromString(message.text)
     await message.bot.send_message(message.from_user.id, "Проверка стейта")
+    await message.answer(reply_markup=ReplyKeyboardRemove())
 
 
 # add new memeber to DB
@@ -87,11 +92,29 @@ async def onUserJoined(message: Message):
     print("JOIN message removed")
     await message.delete()
 
-# location button handler
-@dp.message_handler(Text(equals=["❌ Отмена"]), state=LocatioQuestionState.SendCountry)
-async def processButton(message: Message, state:FSMContext):
-    await state.finish()
-    await message.answer("❌ Отменено", reply_markup=ReplyKeyboardRemove())
+# date command
+@dp.message_handler(Command("note"), state=None)
+async def sendDate(message: Message):
+    await message.answer("""Введите дату""")
+    await NotificationBotStates.SendDate.set()
+
+# date handler
+@dp.message_handler(content_types=['text'], state=NotificationBotStates.SendDate)
+async def sendDate(message: Message, state:FSMContext):
+    await message.answer("Введите время")
+    await NotificationBotStates.SendTime.set()
+
+# date handler
+@dp.message_handler(content_types=['text'], state=NotificationBotStates.SendTime)
+async def sendDate(message: Message, state:FSMContext):
+    await message.answer("Введите сообщения о напоминании")
+    await NotificationBotStates.SendMessage.set()
+
+# date handler
+@dp.message_handler(content_types=['text'], state=NotificationBotStates.SendMessage)
+async def sendDate(message: Message, state:FSMContext):
+    await message.answer("Сообщение введенно")
+    state.finish()
 
 # echo
 @dp.message_handler()
