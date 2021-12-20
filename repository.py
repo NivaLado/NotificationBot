@@ -17,29 +17,31 @@ class Repository:
         result = self.cursor.execute("SELECT 'id' FROM 'users' WHERE 'userId' = ?", (userId,))
         return result.fetchone()[0]
 
-    def addUser(self, userId):
+    def addUser(self, userId, chatId, userName):
         """Добавляем юзера в БД"""
-        self.cursor.execute("INSERT INTO 'users' ('userId') VALUES (?)", (userId,))
+        self.cursor.execute("INSERT INTO 'users' ('userId', 'chatId', 'userName') VALUES (?,?,?)", (userId, chatId, userName))
         return self.conn.commit()
 
-    def addLocationData(self, userId, latitude, longitude, region, timeShift):
+    def addLocationData(self, userId, latitude, longitude, region, hoursShift, minutesShift):
         """Добавляем данные о геопозии юзера"""
-        self.cursor.execute("INSERT INTO 'location' ('userId', 'latitude', 'longitude', 'region', 'timeShift') VALUES (?,?,?,?,?)",
+        self.cursor.execute("INSERT INTO 'location' ('userId', 'latitude', 'longitude', 'region', 'hoursShift', 'minutesShift') VALUES (?,?,?,?,?, ?)",
             (userId,
             latitude,
             longitude,
             region,
-            timeShift))
+            hoursShift,
+            minutesShift))
             
         return self.conn.commit()
 
-    def updateLocationData(self, userId, latitude, longitude, region, timeShift):
+    def updateLocationData(self, userId, latitude, longitude, region, hoursShift, minutesShift):
         """Обновляем данные о геопозии юзера"""
-        self.cursor.execute("UPDATE 'location' SET latitude = ?, longitude = ?, region = ?, timeShift = ? WHERE userId = ?",
-            (777,
-            777,
+        self.cursor.execute("UPDATE 'location' SET latitude = ?, longitude = ?, region = ?, hoursShift = ?, minutesShift = ? WHERE userId = ?",
+            (latitude,
+            longitude,
             region,
-            timeShift,
+            hoursShift,
+            minutesShift,
             userId))
         
         return self.conn.commit()
@@ -53,6 +55,12 @@ class Repository:
         else:
             return True
 
+    def addOrUpdateLocationData(self, userId, latitude, longitude, region, hoursShift, minutesShift):
+        """Create record if it doese't exist or update existing"""
+        if (self.locationDataExists(userId)):
+            self.updateLocationData(userId, latitude, longitude, region, hoursShift, minutesShift)
+        else:
+            self.addLocationData(userId, latitude, longitude, region, hoursShift, minutesShift)
 
     def close(self):
         """Закрытие соединения с БД"""

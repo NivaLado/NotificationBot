@@ -1,6 +1,7 @@
 import re
 import spacy
 from spacy.lang.ru.examples import sentences
+from models.notificationModel import Notification
 import enchant 
 import pymorphy2
 import datetime as dt
@@ -29,20 +30,37 @@ class SpacyNLP:
                 self.getDateFromString(re.search(datePattern,token.text).group(0))
 
             #print(token.text, token.pos_, token.dep_)
-
-
         return True
 
+    def getTimezoneFromString(self, tomezoneString):
+        string = nlp(tomezoneString)
+        for token in string:
+            if re.match(timePattern,token.text):
+                return self.getHoursAndMunutesFromString(re.search(timePattern,token.text).group(0))
+            elif re.match(timePatternWithoutDelimeter,token.text): 
+                return self.getHoursFromString(re.search(timePatternWithoutDelimeter,token.text).group(0))
+                
+        return False
+
     def getHoursFromString(self, timeString):
-        return print(int(timeString))
+        notf = Notification()
+        notf.hours = int(timeString)
+        return notf
 
     def getHoursAndMunutesFromString(self, timeString):
+        notf = Notification()
         if "-" in timeString or "+" in timeString:
-            print("Hours " + timeString[0:3])
+            notf.hours = int(timeString[0:3])
+            notf.minutes = int(timeString[4:6])
+            print("Hours " + notf.hours)
             print("Minutes " + timeString[4:6])
         else:
-            print("Hours " + timeString[0:2])
-            print("Minutes " + timeString[3:5])
+            notf.hours = int(timeString[0:2])
+            notf.minutes = int(timeString[3:5])
+            print("Hours " + notf.hours)
+            print("Minutes " + notf.minutes)
+
+        return notf
 
     def getDateFromString(self, dateString):
         string = str(dateString)
@@ -61,19 +79,8 @@ class SpacyNLP:
 
 #Завтра к +23:00 поставить будильник в школу
 
-# class Notification:
-#     def __init__(self, year, month, day, hour, minutes):
-#         self.year = year
-#         self.month = month
-#         self.day = day
-#         self.hour = hour
-#         self.minute = minutes
-#         self.validationMessage = ""
 
-#     def validateModel(self):
-#         if (self.year < dt.datetime.today().year):
-#             self.validationMessage += "Год должен быть текущим, либо в будующем"
 
-# ntf = Notification(2020,1,1,1,1)
-# ntf.validateModel()
-# print(ntf.validationMessage)
+#ntf = Notification(2020,1,1,1,1)
+#ntf.validateModel()
+#print(ntf.validationMessage)
