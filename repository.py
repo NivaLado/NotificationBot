@@ -1,5 +1,7 @@
 import sqlite3
 
+from models.timezoneModel import TimezoneModel
+
 class Repository:
 
     def __init__(self, dbFile):
@@ -61,6 +63,15 @@ class Repository:
             self.updateLocationData(userId, latitude, longitude, region, hoursShift, minutesShift)
         else:
             self.addLocationData(userId, latitude, longitude, region, hoursShift, minutesShift)
+
+    def tryToGetLocationData(self, userId):
+        """Try to get location data"""
+        result = self.cursor.execute("SELECT hoursShift, minutesShift, region  FROM 'location' WHERE userId = ?", (userId,))
+        row = result.fetchone()
+        if row == None:
+            return False
+        else:
+            return TimezoneModel(row[0], row[1], row[2])
 
     def close(self):
         """Закрытие соединения с БД"""

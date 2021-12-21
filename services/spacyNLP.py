@@ -6,6 +6,8 @@ import enchant
 import pymorphy2
 import datetime as dt
 
+from models.timezoneModel import TimezoneModel
+
 # Init
 nlp = spacy.load("ru_core_news_md") # Used to get tokens from string
 morph = pymorphy2.MorphAnalyzer()   # Used to convert to normal form
@@ -43,24 +45,17 @@ class SpacyNLP:
         return False
 
     def getHoursFromString(self, timeString):
-        notf = Notification()
-        notf.hours = int(timeString)
-        return notf
+        timeZoneModel = TimezoneModel()
+        timeZoneModel.hours = int(timeString)
+        return timeZoneModel
 
     def getHoursAndMunutesFromString(self, timeString):
-        notf = Notification()
-        if "-" in timeString or "+" in timeString:
-            notf.hours = int(timeString[0:3])
-            notf.minutes = int(timeString[4:6])
-            print("Hours " + notf.hours)
-            print("Minutes " + timeString[4:6])
-        else:
-            notf.hours = int(timeString[0:2])
-            notf.minutes = int(timeString[3:5])
-            print("Hours " + notf.hours)
-            print("Minutes " + notf.minutes)
+        timeZoneModel = TimezoneModel()
+        hours, minutes = map(int, timeString.split(':'))
+        timeZoneModel.hours = hours
+        timeZoneModel.minutes = minutes
 
-        return notf
+        return timeZoneModel
 
     def getDateFromString(self, dateString):
         string = str(dateString)
