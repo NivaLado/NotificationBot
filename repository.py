@@ -1,6 +1,7 @@
 import sqlite3
 
 from models.timezoneModel import TimezoneModel
+from models.notificationModel import Notification
 
 class Repository:
 
@@ -72,6 +73,11 @@ class Repository:
             return False
         else:
             return TimezoneModel(row[0], row[1], row[2])
+
+    def addNotification(self, userId, chatId, message, notificationDateTime):
+        """Add notification"""
+        self.cursor.execute("INSERT INTO 'notifications' ('userId', 'chatId', 'message', 'notificationDateTime') VALUES (?,?,?)", (userId, chatId, message, notificationDateTime))
+        return self.conn.commit()
 
     def close(self):
         """Закрытие соединения с БД"""

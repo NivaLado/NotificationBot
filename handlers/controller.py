@@ -1,5 +1,5 @@
 import pytz
-import datetime
+import datetime as dt
 import config
 import requests
 import asyncio
@@ -32,10 +32,7 @@ keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard = True
 )
-
 geoBaseUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
-
-# variables
 hello = "привет"
 unsuccessfulLocationAttempt = """Не удалость определить часовой пояс по локации, попробуйте еще раз либо
 🛠 Введите название вашего города или ваш часовой пояс в формате ±ЧЧ:ММ."""
@@ -48,13 +45,21 @@ async def start(message: Message):
 
     await message.bot.send_message(message.from_user.id, "Добро пожаловать!")
 
+# cancel button
+@dp.message_handler(Text(equals=["❌ Отмена"], ignore_case=True), state='*')
+async def processButton(message: Message, state:FSMContext):
+    await state.finish()
+    await message.answer("❌ Отменено", reply_markup=ReplyKeyboardRemove())
+
 # timezone handler
 @dp.message_handler(Command("tz"))
-async def getTimezone(message: Message):
-    timezoneModel = Repository.tryToGetLocationData(message.from_user.id)
+async def getTimezone(message: Message, state:FSMContext):
+    await state.finish()
+
     timezoneString = "±0:00"
+    timezoneModel = Repository.tryToGetLocationData(message.from_user.id)
     if (timezoneModel):
-        timezoneString = getWholeTimezone(timezoneModel)
+        timezoneString = getWholeTimezoneMessage(timezoneModel)
 
     await message.answer(f"""{timezoneString}
 🛠 Введите название вашего города или ваш часовой пояс в формате ±ЧЧ:ММ.
@@ -68,7 +73,7 @@ async def location (message: Message, state:FSMContext):
         timezoneModel = getTimezoneFromLatitudeAndLongitude(message.location.latitude, message.location.longitude)
         Repository.addOrUpdateLocationData(message.from_user.id, message.location.latitude, message.location.longitude, timezoneModel.location, timezoneModel.hours, timezoneModel.minutes)
 
-        result = getWholeTimezone(timezoneModel)
+        result = getWholeTimezoneMessage(timezoneModel)
 
         await state.finish()
         await message.answer(result, reply_markup=ReplyKeyboardRemove())
@@ -78,44 +83,70 @@ async def location (message: Message, state:FSMContext):
 # If user has state and want to enter country or time
 @dp.message_handler(content_types=['text'], state=LocatioQuestionState.SendCountry)
 async def setTimezoneFromCountry(message: Message, state: FSMContext):
-    timezoneModel = spacyService.getTimezoneFromString(message.text)
     result = unsuccessfulLocationAttempt
+
+    timezoneModel = spacyService.matchTimeFromString(message.text)
     if (timezoneModel):
-        result = getWholeTimezone(timezoneModel)
-    elif (False):
-        result = ""
+        result = getWholeTimezoneMessage(timezoneModel)
+        Repository.addOrUpdateLocationData(message.from_user.id, timezoneModel.latitude, timezoneModel.longitude, timezoneModel.location, timezoneModel.hours, timezoneModel.minutes)
+        await state.finish()
+        return await message.answer(result, reply_markup=ReplyKeyboardRemove())
 
-    await message.answer(result, reply_markup=ReplyKeyboardRemove())
+    timezoneModel = await requestTimzoneFromCountryName(message.text)
+    if (timezoneModel):
+        result = getWholeTimezoneMessage(timezoneModel)
+        Repository.addOrUpdateLocationData(message.from_user.id, timezoneModel.latitude, timezoneModel.longitude, timezoneModel.location, timezoneModel.hours, timezoneModel.minutes)
+        await state.finish()
+        return await message.answer(result, reply_markup=ReplyKeyboardRemove())
 
-# location button handler
-@dp.message_handler(Text(equals=["❌ Отмена"]), state=LocatioQuestionState.SendCountry)
-async def processButton(message: Message, state:FSMContext):
-    await state.finish()
-    await message.answer("❌ Отменено", reply_markup=ReplyKeyboardRemove())
+    await message.answer(result)
 
 # date command
-@dp.message_handler(Command("note"), state=None)
-async def sendDate(message: Message):
-    await message.answer("""Введите дату""")
-    await NotificationBotStates.SendDate.set()
+@dp.message_handler(Command("note"))
+async def sendDate(message: Message, state: FSMContext):
+    await state.finish()
 
-# date handler
-@dp.message_handler(content_types=['text'], state=NotificationBotStates.SendDate)
-async def sendDate(message: Message, state:FSMContext):
-    await message.answer("Введите время")
+    await message.answer("Введите время ⏰ 13:15")
     await NotificationBotStates.SendTime.set()
 
-# date handler
+# time handler
 @dp.message_handler(content_types=['text'], state=NotificationBotStates.SendTime)
 async def sendDate(message: Message, state:FSMContext):
-    await message.answer("Введите сообщения о напоминании")
-    await NotificationBotStates.SendMessage.set()
+    timeModel = spacyService.matchTimeFromString(message.text)
+
+    if (timeModel):
+        await message.answer("""Введите дату 🗓 25/09""")
+        await NotificationBotStates.SendDate.set()
+        await state.update_data(hours = int(timeModel.hours), minutes = int(timeModel.minutes))
+    else:
+        await message.answer("""Введите время в правильном формате, суки тупые, для кого я эти ебаные часы сюда поставил -> ⏰ 13:15""")
+
+
+# time handler
+@dp.message_handler(content_types=['text'], state=NotificationBotStates.SendDate)
+async def sendDate(message: Message, state:FSMContext):
+    dateModel = spacyService.matchDateFromString(message.text)
+
+    if (dateModel):
+        validatedDate = dateModel.validateDate()
+
+        if not (validatedDate):
+            return await message.answer("""Напоминание должно быть в будующем""")
+
+        await message.answer("Введите сообщения о напоминании")
+        await NotificationBotStates.SendMessage.set()
+        await state.update_data(year = int(dateModel.year), month = int(dateModel.month), day = int(dateModel.day))
+    else:
+        await message.answer("""Введите дату 🗓 25/09""")
+
 
 # message handler
 @dp.message_handler(content_types=['text'], state=NotificationBotStates.SendMessage)
 async def sendDate(message: Message, state:FSMContext):
-    await message.answer("Сообщение введенно")
-    state.finish()
+    async with state.proxy() as data:
+        await message.answer(f"Сообщение введенно: {data['year']}/{data['month']}/{data['day']} {data['hours']}:{data['minutes']}" )
+
+    await state.finish()
 
 # echo
 @dp.message_handler()
@@ -123,7 +154,6 @@ async def echo(message: Message):
     if (hello in message.text.lower()):
         await message.bot.send_audio(message.chat.id, "http://docs.google.com/uc?export=open&id=1FvXlSh-FmkpktFM8dWo5YMcIR-3RM6Fr")
     else:
-        spacyService.getDateAndTimeFromString(message.text)
         await message.answer(message.text)
 
 ### PRIVATE FUNCTIONS ###
@@ -158,19 +188,21 @@ async def send_message(user_id: int, text: str, disable_notification: bool = Fal
 async def broadcaster():
     try:
         while False:
-            await asyncio.sleep(10)
-            now = datetime.datetime.utcnow()
-            await send_message(391494087, f'{now}')
+            await asyncio.sleep(0.05)
+            now = dt.datetime.utcnow()
+            await send_message(335041798, 'ПНХ')
     finally:
         log.info("messages successful sent.")
 
 def getTimezoneFromLatitudeAndLongitude(lat, lng):
     timeZone = TimezoneModel()
+    timeZone.latitude = lat
+    timeZone.longitude = lng
     timeZone.location = obj.timezone_at(lat=lat, lng=lng)
     timezone = pytz.timezone(timeZone.location)
-    dt = datetime.datetime.utcnow()
-    timeZone.minutes = timezone.utcoffset(dt).seconds % 60
-    timeZone.hours = int((timezone.utcoffset(dt).seconds - timeZone.minutes) / 60 / 60)
+    datetime = dt.datetime.utcnow()
+    timeZone.minutes = timezone.utcoffset(datetime).seconds % 60
+    timeZone.hours = int((timezone.utcoffset(datetime).seconds - timeZone.minutes) / 60 / 60)
     return timeZone
 
 async def requestTimzoneFromCountryName(country):
@@ -185,19 +217,25 @@ async def requestTimzoneFromCountryName(country):
         geometry = response["results"][0]["geometry"]
         lat = geometry["location"]["lat"]
         lng = geometry["location"]["lng"]
-        result = await getTimezoneFromLatitudeAndLongitude(lat, lng)
+        result = getTimezoneFromLatitudeAndLongitude(lat, lng)
         return result
     else:
         return False
 
-def getWholeTimezone(timeZone):
+def getWholeTimezoneMessage(timeZone):
     return "🌐 Ваш часовой пояс: GMT" + getHoursFromTimezone(timeZone) + ":" + getMinutesFromTimezone(timeZone) + " " + (timeZone.location or "")
 
 def getHoursFromTimezone(timeZone):
-    return "+" + str(timeZone.hours) if timeZone.hours >=0 else str(timeZone.hours)
+    sign = ""
+    if (timeZone.hours >=0):
+        sign = "+"
+
+    hours = str(timeZone.hours).zfill(2)
+
+    return sign + hours
 
 def getMinutesFromTimezone(timeZone):
-    return "00" if timeZone.minutes <= 0 else str(timeZone.minutes)
+    return str(timeZone.minutes).zfill(2)
 
 # isTimezoneSet = Repository.locationDataExists(message.from_user.id)
 # Repository.addLocationData(message.from_user.id, message.location.latitude, message.location.longitude, location, hours)
