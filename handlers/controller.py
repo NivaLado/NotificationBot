@@ -168,9 +168,10 @@ async def sendDate(message: Message, state:FSMContext):
     else:
         await message.answer("Напоминаний нет")
 
-@dp.message_handler(filters.RegexpCommandsFilter(regexp_commands=['[0-9]*']))
+@dp.message_handler(filters.RegexpCommandsFilter(regexp_commands=['(\d+)']))
 async def send_welcome(message: Message, regexp_command):
     await message.reply("You have requested an item with number: {}".format(regexp_command.group(0)))
+    Repository.deleteNotificationByIndex(int(regexp_command.group(0)))
 
 # echo
 @dp.message_handler()

@@ -12,3 +12,4 @@ note - Добавить напоминание
 list - Показать все напоминания
 
 DATETIME(nt.notificationDateTime, loc.hoursShift || ' hours') as notificationDateTime
+Fix unique constraint for notification

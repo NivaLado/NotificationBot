@@ -95,10 +95,21 @@ class Repository:
                 notificationList.append(notificationModel)
 
             return notificationList
-            
+
+    def deleteNotificationByIndex(self, index):
+            index+=1
+            self.cursor.execute("""
+                DELETE FROM 'notifications'
+                    WHERE id = 
+                    (SELECT id 
+                        FROM
+                            (SELECT id, row_number() over () as rn FROM 'notifications')
+                            WHERE rn = ?
+                    )""", (index,))
+                    
+            return self.conn.commit()
 
 
     def close(self):
-        """Закрытие соединения с БД"""
         self.conn.close()
 
