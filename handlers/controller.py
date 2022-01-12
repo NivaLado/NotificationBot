@@ -5,8 +5,9 @@ import requests
 import asyncio
 
 from aiogram.dispatcher.storage import FSMContext
-from aiogram.types import ReplyKeyboardRemove, Message
 from aiogram.dispatcher.filters import Text, Command
+from aiogram.dispatcher import filters
+from aiogram.types import ReplyKeyboardRemove, Message
 from geopy.geocoders import Nominatim
 from dispatcher import dp
 from dispatcher import log
@@ -18,11 +19,11 @@ from states.locationQuestionState import LocatioQuestionState
 from states.notificationBotStates import NotificationBotStates
 from models.notificationModel import Notification
 from models.timezoneModel import TimezoneModel
-from services.spacyNLP import SpacyNLP
+from services.dateTimeParser import DateTimeParser
 
 obj = TimezoneFinder(in_memory=True)
 geolocator = Nominatim(user_agent = "geoapiExercises")
-spacyService = SpacyNLP()
+dateTimeParser = DateTimeParser()
 keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -85,7 +86,7 @@ async def location (message: Message, state:FSMContext):
 async def setTimezoneFromCountry(message: Message, state: FSMContext):
     result = unsuccessfulLocationAttempt
 
-    timezoneModel = spacyService.matchTimeFromString(message.text)
+    timezoneModel = dateTimeParser.matchTimezoneFromString(message.text)
     if (timezoneModel):
         result = getWholeTimezoneMessage(timezoneModel)
         Repository.addOrUpdateLocationData(message.from_user.id, timezoneModel.latitude, timezoneModel.longitude, timezoneModel.location, timezoneModel.hours, timezoneModel.minutes)
@@ -112,7 +113,7 @@ async def sendDate(message: Message, state: FSMContext):
 # time handler
 @dp.message_handler(content_types=['text'], state=NotificationBotStates.SendTime)
 async def sendDate(message: Message, state:FSMContext):
-    timeModel = spacyService.matchTimeFromString(message.text)
+    timeModel = dateTimeParser.matchTimeFromString(message.text)
 
     if (timeModel):
         await message.answer("""Введите дату 🗓 25/09""")
@@ -125,28 +126,51 @@ async def sendDate(message: Message, state:FSMContext):
 # time handler
 @dp.message_handler(content_types=['text'], state=NotificationBotStates.SendDate)
 async def sendDate(message: Message, state:FSMContext):
-    dateModel = spacyService.matchDateFromString(message.text)
+    dateModel = dateTimeParser.matchDateFromString(message.text)
 
     if (dateModel):
         validatedDate = dateModel.validateDate()
 
         if not (validatedDate):
-            return await message.answer("""Напоминание должно быть в будующем""")
+            return await message.answer("""Напоминание должно быть в будущем""")
 
         await message.answer("Введите сообщения о напоминании")
         await NotificationBotStates.SendMessage.set()
         await state.update_data(year = int(dateModel.year), month = int(dateModel.month), day = int(dateModel.day))
     else:
-        await message.answer("""Введите дату 🗓 25/09""")
+        await message.answer("""Введите дату в формате 🗓 25/09""")
 
 
 # message handler
 @dp.message_handler(content_types=['text'], state=NotificationBotStates.SendMessage)
 async def sendDate(message: Message, state:FSMContext):
     async with state.proxy() as data:
-        await message.answer(f"Сообщение введенно: {data['year']}/{data['month']}/{data['day']} {data['hours']}:{data['minutes']}" )
+        dateTime = dt.datetime(data['year'], data['month'], data['day'], data['hours'], data['minutes'])
+        Repository.addNotification(message.from_user.id, message.chat.id, message.text, dateTime)
+        await message.answer(f"Напоминание установлено на: {data['year']}/{data['month']}/{data['day']} {data['hours']}:{data['minutes']} {message.text}" )
 
     await state.finish()
+
+@dp.message_handler(Command("list"))
+async def sendDate(message: Message, state:FSMContext):
+    await state.finish()
+    result = Repository.getAllNotificationsByUserId(message.from_user.id)
+
+    if (result):
+        resultString = ""
+        counter = 0
+        for notification in result:
+            datetime = dt.datetime.strptime(notification.notificationDateTime, '%Y-%m-%d %H:%M:%S')
+            resultString += f"/{counter} {notification.message} : {datetime.year}/{datetime.month}/{datetime.day} {datetime.hour}:{datetime.minute} \n"
+            counter+=1
+
+        await message.answer(resultString)
+    else:
+        await message.answer("Напоминаний нет")
+
+@dp.message_handler(filters.RegexpCommandsFilter(regexp_commands=['[0-9]*']))
+async def send_welcome(message: Message, regexp_command):
+    await message.reply("You have requested an item with number: {}".format(regexp_command.group(0)))
 
 # echo
 @dp.message_handler()

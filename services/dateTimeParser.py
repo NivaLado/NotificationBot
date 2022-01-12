@@ -12,20 +12,35 @@ from models.notificationModel import Notification
 nlp = spacy.load("ru_core_news_md") # Used to get tokens from string
 morph = pymorphy2.MorphAnalyzer()   # Used to convert to normal form
 dictionary = enchant.Dict("ru_RU")  # Used to correct typos in words
-timePattern = "^(-|\+)?([0-1]?[0-9]|2[0-3])[:][0-5]?[0-9]$"
-timePatternWithoutDelimeter = "^(-|\+)?([0-1]?[0-9]|2[0-3])$"
+
+timezonePattern = "^(-|\+)?([0-1]?[0-9]|2[0-3])[:][0-5]?[0-9]$"
+timezonePatternWithoutDelimeter = "^(-|\+)?([0-1]?[0-9]|2[0-3])$"
+
+timePattern = "^(\+)?([0-1]?[0-9]|2[0-3])[:][0-5]?[0-9]$"
+timePatternWithoutDelimeter = "^(\+)?([0-1]?[0-9]|2[0-3])$"
+
 datePattern = "^(?:\d{1,2}(\/)?)(\/\d{1,2}(\/)?)?(\/\d{4})?$"
 
-class SpacyNLP:
-    def matchTimeFromString(self, timezoneString):
+class DateTimeParser:
+    def matchTimezoneFromString(self, timezoneString):
         string = nlp(timezoneString)
+        for token in string:
+            if re.match(timezonePattern,token.text):
+                return self.getHoursAndMunutesFromString(re.search(timezonePattern,token.text).group(0))
+            elif re.match(timezonePatternWithoutDelimeter,token.text): 
+                return self.getHoursFromString(re.search(timezonePatternWithoutDelimeter,token.text).group(0))
+                
+        return False
+
+    def matchTimeFromString(self, timeString):
+        string = nlp(timeString)
         for token in string:
             if re.match(timePattern,token.text):
                 return self.getHoursAndMunutesFromString(re.search(timePattern,token.text).group(0))
             elif re.match(timePatternWithoutDelimeter,token.text): 
                 return self.getHoursFromString(re.search(timePatternWithoutDelimeter,token.text).group(0))
-                
-        return False
+                    
+            return False
 
     def matchDateFromString(self, dateString):
         string = nlp(dateString)
@@ -63,7 +78,7 @@ class SpacyNLP:
 
         return dateModel
 
-spacyService = SpacyNLP()
+spacyService = DateTimeParser()
 result = spacyService.getDateFromString("-1/-1/")
 print(result)
 

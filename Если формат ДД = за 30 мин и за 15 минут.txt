@@ -6,3 +6,9 @@
 
 Убрать минуты из часового пояса
 Добавить /list
+
+tz - Установить часовой пояс
+note - Добавить напоминание
+list - Показать все напоминания
+
+DATETIME(nt.notificationDateTime, loc.hoursShift || ' hours') as notificationDateTime
