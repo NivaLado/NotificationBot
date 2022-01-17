@@ -2,6 +2,7 @@ import datetime as dt
 
 class Notification:
     def __init__(self, year=None, month=None, day=None, hours=None, minutes=None):
+        self.id = None
         self.userId = None
         self.chatId = None
         self.timezone = None

@@ -1,3 +1,4 @@
+import sqlite3
 import pytz
 import datetime as dt
 import config
@@ -146,10 +147,14 @@ async def sendDate(message: Message, state:FSMContext):
 async def sendDate(message: Message, state:FSMContext):
     async with state.proxy() as data:
         dateTime = dt.datetime(data['year'], data['month'], data['day'], data['hours'], data['minutes'])
-        Repository.addNotification(message.from_user.id, message.chat.id, message.text, dateTime)
-        await message.answer(f"Напоминание установлено на: {data['year']}/{data['month']}/{data['day']} {data['hours']}:{data['minutes']} {message.text}" )
+        try:
+            Repository.addNotification(message.from_user.id, message.chat.id, message.text, dateTime)
+            await message.answer(f"Напоминание установлено на: {data['year']}/{data['month']}/{data['day']} {data['hours']}:{data['minutes']} {message.text}")
+        except sqlite3.IntegrityError:
+            await message.answer(f"Напоминание на это время и дату уже установленно, лошара")
+            
+        await state.finish()
 
-    await state.finish()
 
 @dp.message_handler(Command("list"))
 async def sendDate(message: Message, state:FSMContext):
@@ -171,7 +176,7 @@ async def sendDate(message: Message, state:FSMContext):
 @dp.message_handler(filters.RegexpCommandsFilter(regexp_commands=['(\d+)']))
 async def send_welcome(message: Message, regexp_command):
     await message.reply("You have requested an item with number: {}".format(regexp_command.group(0)))
-    Repository.deleteNotificationByIndex(int(regexp_command.group(0)))
+    Repository.deleteNotificationByIndex(message.from_user.id ,int(regexp_command.group(0)))
 
 # echo
 @dp.message_handler()
@@ -179,6 +184,7 @@ async def echo(message: Message):
     if (hello in message.text.lower()):
         await message.bot.send_audio(message.chat.id, "http://docs.google.com/uc?export=open&id=1FvXlSh-FmkpktFM8dWo5YMcIR-3RM6Fr")
     else:
+        result = Repository.getAllNotifications()
         await message.answer(message.text)
 
 ### PRIVATE FUNCTIONS ###
@@ -213,11 +219,28 @@ async def send_message(user_id: int, text: str, disable_notification: bool = Fal
 async def broadcaster():
     try:
         while False:
-            await asyncio.sleep(0.05)
-            now = dt.datetime.utcnow()
-            await send_message(335041798, 'ПНХ')
+            await asyncio.sleep(1)
+            await broadCast()
     finally:
         log.info("messages successful sent.")
+
+async def broadCast():
+    now = dt.datetime.utcnow()
+    notificationsGroupedByChatId = Repository.getAllNotifications()
+
+    for groupedNotifications in notificationsGroupedByChatId:
+        hours = groupedNotifications[0].hours
+        hoursAdded = dt.timedelta(hours = hours)
+        localizedDateTime = now + hoursAdded
+
+        for notification in groupedNotifications:
+            datetime = dt.datetime.strptime(notification.notificationDateTime, '%Y-%m-%d %H:%M:%S')
+
+            ## Scheduler
+            
+            message = f"{notification.message} : {datetime.year}/{datetime.month}/{datetime.day} {datetime.hour}:{datetime.minute}"
+            await send_message(notification.chatId, message)
+
 
 def getTimezoneFromLatitudeAndLongitude(lat, lng):
     timeZone = TimezoneModel()
@@ -261,12 +284,3 @@ def getHoursFromTimezone(timeZone):
 
 def getMinutesFromTimezone(timeZone):
     return str(timeZone.minutes).zfill(2)
-
-# isTimezoneSet = Repository.locationDataExists(message.from_user.id)
-# Repository.addLocationData(message.from_user.id, message.location.latitude, message.location.longitude, location, hours)
-
-# remove new user joined message
-# @dp.message_handler(content_types=["new_chat_members"])
-# async def onUserJoined(message: Message):
-#     print("JOIN message removed")
-#     await message.delete()

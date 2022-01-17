@@ -77,9 +77,6 @@ class Repository:
                 nt.notificationDateTime
             FROM
                 'notifications' nt
-            INNER JOIN 
-                'location' loc 
-                ON loc.userId = nt.userId
             WHERE nt.userId = ?""", (userId,))
 
         rows = result.fetchall()
@@ -96,16 +93,62 @@ class Repository:
 
             return notificationList
 
-    def deleteNotificationByIndex(self, index):
+    def getAllNotifications(self):
+        result = self.cursor.execute("""
+            SELECT
+                nt.id,
+                nt.message,
+                nt.chatId,
+                nt.notificationDateTime,
+                loc.hoursShift
+            FROM
+                'notifications' nt
+            INNER JOIN 
+                'location' loc 
+                ON loc.userId = nt.userId
+            WHERE nt.status = 0
+            ORDER BY nt.chatId""")
+
+        rows = result.fetchall()
+        if rows == None:
+            return False
+        else:
+            previousChatId = None
+            notificationList = []
+            listOfNotificationsGroupedByChatId = []
+
+            for notification in rows:
+                if (previousChatId is not None and previousChatId != notification[1]):
+                    listOfNotificationsGroupedByChatId.append(notificationList)
+                    notificationList = []
+
+                notificationModel = Notification()
+                notificationModel.id = notification[0]
+                notificationModel.message = notification[1]
+                notificationModel.chatId = notification[2]
+                notificationModel.notificationDateTime = notification[3]
+                notificationModel.hours = notification[4]
+
+                previousChatId = notificationModel.chatId
+                notificationList.append(notificationModel)
+
+            listOfNotificationsGroupedByChatId.append(notificationList)
+            return listOfNotificationsGroupedByChatId
+
+    def updateNotificationById(self, id, status):
+        self.cursor.execute("UPDATE 'notifications' SET status = ? WHERE id = ?", (status, id))
+        return self.conn.commit()
+
+    def deleteNotificationByIndex(self, userId, index):
             index+=1
             self.cursor.execute("""
                 DELETE FROM 'notifications'
                     WHERE id = 
                     (SELECT id 
                         FROM
-                            (SELECT id, row_number() over () as rn FROM 'notifications')
+                            (SELECT id, row_number() over () as rn FROM 'notifications' WHERE userId = ?)
                             WHERE rn = ?
-                    )""", (index,))
+                    )""", (userId, index))
                     
             return self.conn.commit()
 
