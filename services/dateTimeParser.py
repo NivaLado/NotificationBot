@@ -1,11 +1,9 @@
 import re
-import spacy
 
 from models.timezoneModel import TimezoneModel
 from models.notificationModel import Notification
 
 # Init
-nlp = spacy.load("ru_core_news_md") # Used to get tokens from string
 timezonePattern = "^(-|\+)?([0-1]?[0-9]|2[0-3])[:][0-5]?[0-9]$"
 timezonePatternWithoutDelimeter = "^(-|\+)?([0-1]?[0-9]|2[0-3])$"
 
@@ -16,30 +14,30 @@ datePattern = "^(?:\d{1,2}(\/)?)(\/\d{1,2}(\/)?)?(\/\d{4})?$"
 
 class DateTimeParser:
     def matchTimezoneFromString(self, timezoneString):
-        string = nlp(timezoneString)
+        string = timezoneString.split()
         for token in string:
-            if re.match(timezonePattern,token.text):
-                return self.getHoursAndMunutesFromString(re.search(timezonePattern,token.text).group(0))
-            elif re.match(timezonePatternWithoutDelimeter,token.text): 
-                return self.getHoursFromString(re.search(timezonePatternWithoutDelimeter,token.text).group(0))
+            if re.match(timezonePattern,token):
+                return self.getHoursAndMunutesFromString(re.search(timezonePattern,token).group(0))
+            elif re.match(timezonePatternWithoutDelimeter,token): 
+                return self.getHoursFromString(re.search(timezonePatternWithoutDelimeter,token).group(0))
                 
         return False
 
     def matchTimeFromString(self, timeString):
-        string = nlp(timeString)
+        string = timeString.split()
         for token in string:
-            if re.match(timePattern,token.text):
-                return self.getHoursAndMunutesFromString(re.search(timePattern,token.text).group(0))
-            elif re.match(timePatternWithoutDelimeter,token.text): 
-                return self.getHoursFromString(re.search(timePatternWithoutDelimeter,token.text).group(0))
+            if re.match(timePattern,token):
+                return self.getHoursAndMunutesFromString(re.search(timePattern,token).group(0))
+            elif re.match(timePatternWithoutDelimeter,token): 
+                return self.getHoursFromString(re.search(timePatternWithoutDelimeter,token).group(0))
                     
             return False
 
     def matchDateFromString(self, dateString):
-        string = nlp(dateString)
+        string = dateString.split()
         for token in string:
-            if re.match(datePattern,token.text): 
-                return self.getDateFromString(re.search(datePattern,token.text).group(0))
+            if re.match(datePattern,token): 
+                return self.getDateFromString(re.search(datePattern,token).group(0))
                 
         return False
 

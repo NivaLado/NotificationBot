@@ -263,14 +263,13 @@ async def broadCast():
                         await send_message(notification.chatId, message)
 
 def getTimeDelta(progress):
-    match schema0[progress][0]:
-        case "week":
+        if (schema0[progress][0] == "week"):
             return dt.timedelta(weeks = schema0[progress][1])
-        case "days":
+        if (schema0[progress][0] == "days"):
             return dt.timedelta(weeks = schema0[progress][1])
-        case "hours":
+        if (schema0[progress][0] == "hours"):
             return dt.timedelta(hours = schema0[progress][1])
-        case "minutes":
+        if (schema0[progress][0] == "minutes"):
             return dt.timedelta(minutes = schema0[progress][1])
 
 

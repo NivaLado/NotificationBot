@@ -31,7 +31,7 @@ if __name__ == "__main__":
         loop = get_or_create_eventloop()
         ##loop.create_task(handlers.controller.broadcaster())
         loop.call_later(DELAY, repeat, loop)
-        executor.start_polling(dp, loop = loop, on_shutdown=shutdown(dp), skip_updates=True)
+        executor.start_polling(dp, loop = loop, on_shutdown=shutdown, skip_updates=True)
     except KeyboardInterrupt:
         loop.stop()
 
