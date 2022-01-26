@@ -132,7 +132,7 @@ async def sendDate(message: Message, state:FSMContext):
     if (timeModel):
         await message.answer("""Введите дату 🗓 25/09""")
         await NotificationBotStates.SendDate.set()
-        await state.update_data(hours = int(timeModel.hours), minutes = int(timeModel.minutes))
+        await state.update_data(hours = timeModel.hours, minutes = timeModel.minutes)
     else:
         await message.answer("""Введите время в правильном формате, суки тупые, для кого я эти ебаные часы сюда поставил -> ⏰ 13:15""")
 
@@ -150,7 +150,7 @@ async def sendDate(message: Message, state:FSMContext):
 
         await message.answer("Введите сообщения о напоминании")
         await NotificationBotStates.SendMessage.set()
-        await state.update_data(year = int(dateModel.year), month = int(dateModel.month), day = int(dateModel.day))
+        await state.update_data(year = dateModel.year, month = dateModel.month, day = dateModel.day)
     else:
         await message.answer("""Введите дату в формате 🗓 25/09""")
 
@@ -162,7 +162,7 @@ async def sendDate(message: Message, state:FSMContext):
         dateTime = dt.datetime(data['year'], data['month'], data['day'], data['hours'], data['minutes'])
         try:
             Repository.addNotification(message.from_user.id, message.chat.id, message.text, dateTime)
-            await message.answer(f"Напоминание установлено на: {data['year']}/{data['month']}/{data['day']} {data['hours']}:{data['minutes']} {message.text}", reply_markup=ReplyKeyboardRemove())
+            await message.answer(f"Напоминание установлено на: {formatDateTimeAsString(data['year'], data['month'], data['day'], data['hours'], data['minutes'])} {message.text}", reply_markup=ReplyKeyboardRemove())
         except sqlite3.IntegrityError:
             await message.answer(f"Напоминание на это время и дату уже установленно, лошара", reply_markup=ReplyKeyboardRemove())
             
@@ -179,7 +179,7 @@ async def sendDate(message: Message, state:FSMContext):
         counter = 0
         for notification in result:
             datetime = dt.datetime.strptime(notification.notificationDateTime, '%Y-%m-%d %H:%M:%S')
-            resultString += f"/{counter} {notification.message} : {datetime.year}/{datetime.month}/{datetime.day} {datetime.hour}:{datetime.minute} \n"
+            resultString += f"/{counter} {notification.message} : {formatDateTimeAsString(datetime.year, datetime.month, datetime.day, datetime.hour, datetime.minute)} \n"
             counter+=1
 
         await message.answer(resultString)
@@ -259,7 +259,7 @@ async def broadCast():
                         progress = notification.progress + 1
                         Repository.updateNotificationById(notification.id, status, progress)
 
-                        message = f"{notification.message} : {notificationTime.year}/{notificationTime.month}/{notificationTime.day} {notificationTime.hour}:{notificationTime.minute}"
+                        message = f"{notification.message} : " + formatDateTimeAsString(notificationTime.year, notificationTime.month, notificationTime.day, notificationTime.hour, notificationTime.minute)
                         await send_message(notification.chatId, message)
 
 def getTimeDelta(progress):
@@ -303,16 +303,19 @@ async def requestTimzoneFromCountryName(country):
         return False
 
 def getWholeTimezoneMessage(timeZone):
-    return "🌐 Ваш часовой пояс: GMT" + getHoursFromTimezone(timeZone) + ":" + getMinutesFromTimezone(timeZone) + " " + (timeZone.location or "")
+    return "🌐 Ваш часовой пояс: GMT" + getHoursFromTimezone(timeZone) + ":" + zFillInteger(timeZone.minutes) + " " + (timeZone.location or "")
 
 def getHoursFromTimezone(timeZone):
     sign = ""
     if (timeZone.hours >=0):
         sign = "+"
 
-    hours = str(timeZone.hours).zfill(2)
+    hours = zFillInteger(timeZone.hours)
 
     return sign + hours
 
-def getMinutesFromTimezone(timeZone):
-    return str(timeZone.minutes).zfill(2)
+def zFillInteger(integer):
+    return str(integer).zfill(2)
+
+def formatDateTimeAsString(year, month, day, hours, minutes):
+    return f"{zFillInteger(year)}/{zFillInteger(month)}/{zFillInteger(day)} {zFillInteger(hours)}:{zFillInteger(minutes)}"

@@ -60,11 +60,11 @@ class DateTimeParser:
         count = string.count("/")
         splittedString = string.split("/")
 
-        dateModel.day = splittedString[0]
+        dateModel.day = int(splittedString[0])
 
         if count >= 1:
-            dateModel.month = splittedString[1]
+            dateModel.month = int(splittedString[1])
         if count >= 2:
-            dateModel.year = splittedString[2]
+            dateModel.year = int(splittedString[2])
 
         return dateModel
