@@ -10,7 +10,7 @@ class Repository:
         self.cursor = self.conn.cursor()
 
     def userExists(self, userId):
-        result = self.cursor.execute("SELECT 'id' FROM 'users' WHERE 'userId' = ?", (userId,))
+        result = self.cursor.execute("SELECT id FROM 'users' WHERE userId = ?", (userId,))
         return bool(len(result.fetchall()))
 
     def getUserId(self, userId):
@@ -100,7 +100,8 @@ class Repository:
                 nt.message,
                 nt.chatId,
                 nt.notificationDateTime,
-                loc.hoursShift
+                loc.hoursShift,
+                nt.progress
             FROM
                 'notifications' nt
             INNER JOIN 
@@ -118,7 +119,7 @@ class Repository:
             listOfNotificationsGroupedByChatId = []
 
             for notification in rows:
-                if (previousChatId is not None and previousChatId != notification[1]):
+                if (previousChatId is not None and previousChatId != notification[2]):
                     listOfNotificationsGroupedByChatId.append(notificationList)
                     notificationList = []
 
@@ -128,6 +129,7 @@ class Repository:
                 notificationModel.chatId = notification[2]
                 notificationModel.notificationDateTime = notification[3]
                 notificationModel.hours = notification[4]
+                notificationModel.progress = notification[5]
 
                 previousChatId = notificationModel.chatId
                 notificationList.append(notificationModel)
@@ -135,8 +137,8 @@ class Repository:
             listOfNotificationsGroupedByChatId.append(notificationList)
             return listOfNotificationsGroupedByChatId
 
-    def updateNotificationById(self, id, status):
-        self.cursor.execute("UPDATE 'notifications' SET status = ? WHERE id = ?", (status, id))
+    def updateNotificationById(self, id, status, progress):
+        self.cursor.execute("UPDATE 'notifications' SET status = ?, progress = ? WHERE id = ?", (status, progress, id))
         return self.conn.commit()
 
     def deleteNotificationByIndex(self, userId, index):

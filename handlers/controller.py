@@ -18,7 +18,6 @@ from timezonefinder import TimezoneFinder
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from states.locationQuestionState import LocatioQuestionState
 from states.notificationBotStates import NotificationBotStates
-from models.notificationModel import Notification
 from models.timezoneModel import TimezoneModel
 from services.dateTimeParser import DateTimeParser
 
@@ -34,10 +33,24 @@ keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard = True
 )
+
+notificationKeyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="❌ Отмена")
+        ]
+    ],
+    resize_keyboard = True
+)
+
 geoBaseUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
 hello = "привет"
 unsuccessfulLocationAttempt = """Не удалость определить часовой пояс по локации, попробуйте еще раз либо
 🛠 Введите название вашего города или ваш часовой пояс в формате ±ЧЧ:ММ."""
+
+schema0 = [["minutes", 10], ["minutes", 5]]
+schema1 = [["days", 2], ["minutes", 30], ["minutes", 15]]
+schema2 = [["weeks", 1], ["days", 2], ["minutes", 30], ["minutes", 15]]
 
 # add new memeber to DB
 @dp.message_handler(commands = "start")
@@ -108,7 +121,7 @@ async def setTimezoneFromCountry(message: Message, state: FSMContext):
 async def sendDate(message: Message, state: FSMContext):
     await state.finish()
 
-    await message.answer("Введите время ⏰ 13:15")
+    await message.answer("Введите время ⏰ 13:15", reply_markup=notificationKeyboard)
     await NotificationBotStates.SendTime.set()
 
 # time handler
@@ -149,9 +162,9 @@ async def sendDate(message: Message, state:FSMContext):
         dateTime = dt.datetime(data['year'], data['month'], data['day'], data['hours'], data['minutes'])
         try:
             Repository.addNotification(message.from_user.id, message.chat.id, message.text, dateTime)
-            await message.answer(f"Напоминание установлено на: {data['year']}/{data['month']}/{data['day']} {data['hours']}:{data['minutes']} {message.text}")
+            await message.answer(f"Напоминание установлено на: {data['year']}/{data['month']}/{data['day']} {data['hours']}:{data['minutes']} {message.text}", reply_markup=ReplyKeyboardRemove())
         except sqlite3.IntegrityError:
-            await message.answer(f"Напоминание на это время и дату уже установленно, лошара")
+            await message.answer(f"Напоминание на это время и дату уже установленно, лошара", reply_markup=ReplyKeyboardRemove())
             
         await state.finish()
 
@@ -184,7 +197,6 @@ async def echo(message: Message):
     if (hello in message.text.lower()):
         await message.bot.send_audio(message.chat.id, "http://docs.google.com/uc?export=open&id=1FvXlSh-FmkpktFM8dWo5YMcIR-3RM6Fr")
     else:
-        result = Repository.getAllNotifications()
         await message.answer(message.text)
 
 ### PRIVATE FUNCTIONS ###
@@ -217,29 +229,50 @@ async def send_message(user_id: int, text: str, disable_notification: bool = Fal
 
 
 async def broadcaster():
-    try:
-        while False:
-            await asyncio.sleep(1)
+    ##try:
+        ##while True:
+            ##await asyncio.sleep(60)
             await broadCast()
-    finally:
-        log.info("messages successful sent.")
 
 async def broadCast():
     now = dt.datetime.utcnow()
     notificationsGroupedByChatId = Repository.getAllNotifications()
 
     for groupedNotifications in notificationsGroupedByChatId:
-        hours = groupedNotifications[0].hours
-        hoursAdded = dt.timedelta(hours = hours)
-        localizedDateTime = now + hoursAdded
+        if groupedNotifications:
+            hours = groupedNotifications[0].hours
+            hoursAdded = dt.timedelta(hours = hours)
+            localizedNow = now + hoursAdded
 
-        for notification in groupedNotifications:
-            datetime = dt.datetime.strptime(notification.notificationDateTime, '%Y-%m-%d %H:%M:%S')
+            for notification in groupedNotifications:
+                if notification:
+                    notificationTime = dt.datetime.strptime(notification.notificationDateTime, '%Y-%m-%d %H:%M:%S')
 
-            ## Scheduler
-            
-            message = f"{notification.message} : {datetime.year}/{datetime.month}/{datetime.day} {datetime.hour}:{datetime.minute}"
-            await send_message(notification.chatId, message)
+                    timeDelta = getTimeDelta(notification.progress)
+
+                    ## Lock notifications in past
+                    ## if (notificationTime >= localizedNow):
+
+                    ## Scheduler
+                    if (notificationTime - localizedNow <= timeDelta):
+                        status = 1 if len(schema0) - 1 <= notification.progress else 0
+                        progress = notification.progress + 1
+                        Repository.updateNotificationById(notification.id, status, progress)
+
+                        message = f"{notification.message} : {notificationTime.year}/{notificationTime.month}/{notificationTime.day} {notificationTime.hour}:{notificationTime.minute}"
+                        await send_message(notification.chatId, message)
+
+def getTimeDelta(progress):
+    match schema0[progress][0]:
+        case "week":
+            return dt.timedelta(weeks = schema0[progress][1])
+        case "days":
+            return dt.timedelta(weeks = schema0[progress][1])
+        case "hours":
+            return dt.timedelta(hours = schema0[progress][1])
+        case "minutes":
+            return dt.timedelta(minutes = schema0[progress][1])
+
 
 
 def getTimezoneFromLatitudeAndLongitude(lat, lng):

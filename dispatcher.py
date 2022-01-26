@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename='notifications.log', encoding='utf-8', level=logging.INFO)
 log = logging.getLogger('notifications')
 
 # prerequisites

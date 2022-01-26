@@ -1,18 +1,11 @@
 import re
 import spacy
-from spacy.lang.ru.examples import sentences
-import enchant 
-import pymorphy2
-import datetime as dt
 
 from models.timezoneModel import TimezoneModel
 from models.notificationModel import Notification
 
 # Init
 nlp = spacy.load("ru_core_news_md") # Used to get tokens from string
-morph = pymorphy2.MorphAnalyzer()   # Used to convert to normal form
-dictionary = enchant.Dict("ru_RU")  # Used to correct typos in words
-
 timezonePattern = "^(-|\+)?([0-1]?[0-9]|2[0-3])[:][0-5]?[0-9]$"
 timezonePatternWithoutDelimeter = "^(-|\+)?([0-1]?[0-9]|2[0-3])$"
 
@@ -77,11 +70,3 @@ class DateTimeParser:
             dateModel.year = splittedString[2]
 
         return dateModel
-
-spacyService = DateTimeParser()
-result = spacyService.getDateFromString("-1/-1/")
-print(result)
-
-#ntf = Notification(2020,1,1,1,1)
-#ntf.validateModel()
-#print(ntf.validationMessage)

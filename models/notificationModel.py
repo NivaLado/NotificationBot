@@ -8,6 +8,7 @@ class Notification:
         self.timezone = None
         self.message = None
         self.notificationDateTime = None
+        self.progress = None
         self.year = year
         self.month = month
         self.day = day
